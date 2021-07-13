@@ -4,12 +4,18 @@ ARCC - Allowable Revocable Contract Chain System for Bitcoin Cash
 
 <h3>Whitepaper</h3>
 
-Soon.
+[whitepaper.pdf](https://github.com/kiok46/arcc/blob/main/whitepaper.pdf)
+
 
 <h3>Implementation</h3>
-An Implementation of ARCC contract could be found here: https://github.com/cashkit/arcc
+An Implementation of ARCC contract could be found here:
+
+[https://github.com/cashkit/arcc](https://github.com/cashkit/arcc)
+
+
 
 <img width="1440" alt="Screenshot 2021-07-12 at 3 26 57 PM" src="https://user-images.githubusercontent.com/7335120/125268752-a535e580-e325-11eb-8ea7-d53715ea318a.png">
+
 
 <h3>Contract</h3>
 
