@@ -12,7 +12,7 @@ pragma cashscript ^0.6.3;
 contract Agreement(
         pubkey payerPk,
         pubkey payeePk,
-        bytes4 epoch, // 1 epoch makes 1 block.
+        bytes4 epoch,
         bytes4 maxAmountPerEpoch,
         bytes4 remainingTime,
         bytes4 remainingAmount,
@@ -72,10 +72,10 @@ contract Agreement(
         if (passedTime >= newRemainingTime){
             newRemainingAmount = int(maxAmountPerEpoch) - amount;
             // This is just a placeholder value the real value will be updated in the code below.
-            int timeSinceLastEpoch = iEpoch;
+            int timeSinceLastEpoch = 0;
             // Case 1
             if (iEpoch == 0 ) {
-                timeSinceLastEpoch = 0;
+                // This condition needs timeSinceLastEpoch = 0
                 newRemainingAmount = int(maxAmountPerEpoch);
             // Case 2
             } else if (passedTime > iEpoch){

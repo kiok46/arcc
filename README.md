@@ -13,7 +13,6 @@ An Implementation of ARCC contract could be found here:
 [https://github.com/cashkit/arcc](https://github.com/cashkit/arcc)
 
 
-
 <img width="1440" alt="Screenshot 2021-07-12 at 3 26 57 PM" src="https://user-images.githubusercontent.com/7335120/125268752-a535e580-e325-11eb-8ea7-d53715ea318a.png">
 
 
@@ -94,10 +93,10 @@ contract Agreement(
         if (passedTime >= newRemainingTime){
             newRemainingAmount = int(maxAmountPerEpoch) - amount;
             // This is just a placeholder value the real value will be updated in the code below.
-            int timeSinceLastEpoch = iEpoch;
+            int timeSinceLastEpoch = 0;
             // Case 1
             if (iEpoch == 0 ) {
-                timeSinceLastEpoch = 0;
+                // This condition needs timeSinceLastEpoch = 0
                 newRemainingAmount = int(maxAmountPerEpoch);
             // Case 2
             } else if (passedTime > iEpoch){
