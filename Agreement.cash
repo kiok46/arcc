@@ -21,7 +21,7 @@ contract Agreement(
 
     /*
     * Can only be used by the payer.
-    * @param: payerSig: signature of payer.
+    * @param: payerSig: signature of payerPk.
     */
     function revoke(sig payerSig){
         require(checkSig(payerSig, payerPk));
@@ -39,54 +39,62 @@ contract Agreement(
         int amountToNextState,
         int amount,
     ) {
-        // Make sure that only payee can make this transaction.
+        // Check payee's signatures.
         require(checkSig(payeeSig, payeePk));
-        int iEpoch = int(epoch);
-        // As a safety measure as this amount is used in further calculations.
-        require(within(amount, 546, int(maxAmountPerEpoch) + 1));
-        // Make sure that we are not spending a contract with a blockheight less than the current height.
-        require(tx.time >= int(validFrom));
 
-        // This will be used to check whether a new epoch has started.
+        // Only necessary casting used to reduce size. All other casting which either increase
+        // the number of operations or keep the size same are ignored.
+        int sameMaxAmountPerEpoch = int(maxAmountPerEpoch);
+        require(sameMaxAmountPerEpoch >= 546);
+        require(within(amount, 546, sameMaxAmountPerEpoch + 1));
+
+        // Time based checking
+        // Make sure that we are not spending a contract with a blockheight less than the current height.
+        int sameEpoch = int(epoch);
+        require(sameEpoch >= 0);
+
+        // require(tx.time >= int(validFrom));
         int passedTime = int(tx.locktime) - int(validFrom);
         require(passedTime >= 0);
-        // Make sure that we are waiting atleast `epoch` to be able to spend funds again.
 
-        // This block will execute when passedTime is less than remaining time
-        // i.e the epoch is not half way through yet.
-        int newRemainingTime = int(remainingTime) - passedTime;
+        int newRemainingTime = int(remainingTime);
+        require(within(newRemainingTime, 0, sameEpoch + 1));
+
         int newRemainingAmount = int(remainingAmount) - amount;
+        require(within(newRemainingAmount, 0, sameMaxAmountPerEpoch + 1));
 
         // This `if` statement will execute in the following cases:
-        // Case 1: Epoch is set to 0 which means the remainingTime will also be always 0 and hence the passedTime will
-        //         always be greater than or equal to remainingTime. This helps in cases where there is no need for a time.
-        //         i.e epoch is set to 0 at the time of contract creation.
-        //         The contracts will be dependent on the amount and this if statement will always execute.
-        //         The value of remainingAmount will always be maxAmountPerEpoch.
-        // Case 2: If the passedTime is much biger then it means that payee has missed some epochs without fetching funds
+        // Case 1: Epoch is set to 0 which means the remainingTime will also be 0(given the initial condition was remainingTime = epoch = 0)
+        //         and hence the passedTime will always be greater than or equal to remainingTime.
+        //         This helps in cases where there is no need for a time.
+        //         i.e epoch is set to 0 at the time of contract creation. The contracts will be dependent on the amount and maxAmountPerEpoch,
+        //         and this if statement will always execute. The value of remainingAmount will always be maxAmountPerEpoch.
+        // Case 2: If the passedTime is much bigger, then it means that payee has missed some epochs without fetching funds
         //         from the contract.
         //         Note: This means that if no amount was redeemed in the last epoch then that amount is no longer redeemable.
+        //         The amount is not burned but simply ignored.
         //         Since the spending functionality can easily be implemented in the 'outside' world of Bitcoin Script,
         //         it's better not to include a logic which can be covered by a layer of frontend.      
         // Case 3: Payee is making a transaction within an epoch window but it's already half way through.
         if (passedTime >= newRemainingTime){
-            newRemainingAmount = int(maxAmountPerEpoch) - amount;
-            // This is just a placeholder value the real value will be updated in the code below.
+            newRemainingAmount = sameMaxAmountPerEpoch - amount;
             int timeSinceLastEpoch = 0;
             // Case 1
-            if (iEpoch == 0 ) {
+            if (sameEpoch == 0) {
                 // This condition needs timeSinceLastEpoch = 0
-                newRemainingAmount = int(maxAmountPerEpoch);
+                newRemainingAmount = sameMaxAmountPerEpoch;
             // Case 2
-            } else if (passedTime > iEpoch){
-                timeSinceLastEpoch = passedTime % iEpoch;
+            } else if (passedTime > sameEpoch){
+                timeSinceLastEpoch = passedTime % sameEpoch;
             // Case 3
             } else {
                 // If epoch is passed then reset the remainingAmount to maxAmountPerEpoch
                 // but subtract the amount that will be spend in this transaction.
                 timeSinceLastEpoch = passedTime - newRemainingTime;
             }
-            newRemainingTime = iEpoch - timeSinceLastEpoch;
+            newRemainingTime = sameEpoch - timeSinceLastEpoch;
+        } else {
+            newRemainingTime = newRemainingTime - passedTime;
         }
 
         // Create a new contract with timelock as the current or provided locktime during contract building.
