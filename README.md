@@ -74,7 +74,6 @@ contract Agreement(
         int sameEpoch = int(epoch);
         require(sameEpoch >= 0);
 
-        // require(tx.time >= int(validFrom));
         int passedTime = int(tx.locktime) - int(validFrom);
         require(passedTime >= 0);
 
@@ -84,47 +83,32 @@ contract Agreement(
         int newRemainingAmount = int(remainingAmount) - amount;
         require(within(newRemainingAmount, 0, sameMaxAmountPerEpoch + 1));
 
-        // This `if` statement will execute in the following cases:
-        // Case 1: Epoch is set to 0 which means the remainingTime will also be 0(given the initial condition was remainingTime = epoch = 0)
-        //         and hence the passedTime will always be greater than or equal to remainingTime.
-        //         This helps in cases where there is no need for a time.
-        //         i.e epoch is set to 0 at the time of contract creation. The contracts will be dependent on the amount and maxAmountPerEpoch,
-        //         and this if statement will always execute. The value of remainingAmount will always be maxAmountPerEpoch.
-        // Case 2: If the passedTime is much bigger, then it means that payee has missed some epochs without fetching funds
-        //         from the contract.
-        //         Note: This means that if no amount was redeemed in the last epoch then that amount is no longer redeemable.
-        //         The amount is not burned but simply ignored.
-        //         Since the spending functionality can easily be implemented in the 'outside' world of Bitcoin Script,
-        //         it's better not to include a logic which can be covered by a layer of frontend.      
-        // Case 3: Payee is making a transaction within an epoch window but it's already half way through.
-        if (passedTime >= newRemainingTime){
-            newRemainingAmount = sameMaxAmountPerEpoch - amount;
-            int timeSinceLastEpoch = 0;
-            // Case 1
-            if (sameEpoch == 0) {
-                // This condition needs timeSinceLastEpoch = 0
-                newRemainingAmount = sameMaxAmountPerEpoch;
-            // Case 2
-            } else if (passedTime > sameEpoch){
-                timeSinceLastEpoch = passedTime % sameEpoch;
-            // Case 3
-            } else {
-                // If epoch is passed then reset the remainingAmount to maxAmountPerEpoch
-                // but subtract the amount that will be spend in this transaction.
-                timeSinceLastEpoch = passedTime - newRemainingTime;
-            }
-            newRemainingTime = sameEpoch - timeSinceLastEpoch;
+
+        if (sameEpoch == 0){
+            newRemainingTime = 0; // Direct assignment to 0 saves 1 operation.
+            newRemainingAmount = sameMaxAmountPerEpoch;
         } else {
-            newRemainingTime = newRemainingTime - passedTime;
+            if (passedTime >= newRemainingTime) {  newRemainingAmount = sameMaxAmountPerEpoch - amount; }
+
+            if (newRemainingTime >= (passedTime % sameEpoch)) {
+                newRemainingTime = newRemainingTime - (passedTime % sameEpoch);
+            } else {
+                newRemainingTime = sameEpoch - ((passedTime % sameEpoch) - newRemainingTime);
+            }
+        }
+
+        if (newRemainingTime == 0) {
+            // In case of collision.
+            newRemainingTime = sameEpoch;
         }
 
         // Create a new contract with timelock as the current or provided locktime during contract building.
         // Note that the constructor parameters are added in the reverse order.
-        // So initial block is actually the first statement in the contract bytecode.
+        // So validFrom is actually the first statement in the contract bytecode.
         bytes nextState = 0x04 + tx.locktime + 0x04 + bytes4(newRemainingAmount) + 0x04 + bytes4(newRemainingTime) + tx.bytecode.split(15)[1];
     
         // Create a simulated state(Helps in enforcing spendable restrictions) by sending the money to the new contract with same
-        // parameters except the timelock.
+        // parameters except the timelock/validFrom.
         bytes34 toRecipient = new OutputP2PKH(bytes8(amount), hash160(payeePk));
         bytes32 toContract = new OutputP2SH(bytes8(amountToNextState), hash160(nextState));
 
