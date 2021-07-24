@@ -12,8 +12,7 @@ An Implementation of ARCC contract could be found here:
 
 [https://github.com/cashkit/arcc](https://github.com/cashkit/arcc)
 
-![Screenshot 2021-07-24 at 8 13 08 PM](https://user-images.githubusercontent.com/7335120/126872061-e681084f-01b8-4582-a520-eae5a6026652.png)
-
+![Screenshot 2021-07-24 at 8 18 22 PM](https://user-images.githubusercontent.com/7335120/126872166-89be7458-fe45-40e8-9037-4d6d868f26d5.png)
 
 
 <h3>Contract</h3>
