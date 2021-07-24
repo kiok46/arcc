@@ -12,8 +12,8 @@ An Implementation of ARCC contract could be found here:
 
 [https://github.com/cashkit/arcc](https://github.com/cashkit/arcc)
 
+![Screenshot 2021-07-24 at 8 13 08 PM](https://user-images.githubusercontent.com/7335120/126872061-e681084f-01b8-4582-a520-eae5a6026652.png)
 
-![arcc_ss](https://user-images.githubusercontent.com/7335120/125753256-3153b572-a68b-4a70-934f-2b744f85070b.png)
 
 
 <h3>Contract</h3>
@@ -24,9 +24,9 @@ pragma cashscript ^0.6.3;
 /**
  * @param: payerPk: Pubkey of the payer.
  * @param: payeePk: Pubkey of the payee.
- * @param: epoch: Each epoch represents a timeframe.
+ * @param: epoch: Each epoch represents a timeframe, epoch = 1 is 1 block.
  * @param: maxAmountPerEpoch: Max amount allowed to be spend by payee per epoch.
- * @param: remainingTime: The remaining time after which a new epoch will get started.
+ * @param: remainingTime: The remaining time after which a new epoch will start.
  * @param: remaningAmount: Remaining amount that can be withdrawan from the contract by payee before next epoch starts.
  * @param: validFrom: The blockheight/time of contract/state creation.
  */
@@ -52,7 +52,7 @@ contract Agreement(
      * Can only be used by payee.
      * @param: payeeSig: signature of the payee.
      * @param: amountToNextState: Amount sent should be greater than 546 i.e the dust limit
-     * otherwise the contract will not execute.
+     * otherwise the next state of contract will not be spendable by payee. Need more funds.
      * @param: amount: Amount to be sent to the payeePkh
      */
     function spend(
@@ -69,25 +69,24 @@ contract Agreement(
         require(sameMaxAmountPerEpoch >= 546);
         require(within(amount, 546, sameMaxAmountPerEpoch + 1));
 
-        // Time based checking
-        // Make sure that we are not spending a contract with a blockheight less than the current height.
         int sameEpoch = int(epoch);
         require(sameEpoch >= 0);
 
+        require(tx.time >= int(validFrom));
         int passedTime = int(tx.locktime) - int(validFrom);
         require(passedTime >= 0);
 
         int newRemainingTime = int(remainingTime);
         require(within(newRemainingTime, 0, sameEpoch + 1));
 
+        // Can be negative here for cases where remaining amount is 0 but a new epoch has started.
         int newRemainingAmount = int(remainingAmount) - amount;
-        require(within(newRemainingAmount, 0, sameMaxAmountPerEpoch + 1));
-
 
         if (sameEpoch == 0){
             newRemainingTime = 0; // Direct assignment to 0 saves 1 operation.
             newRemainingAmount = sameMaxAmountPerEpoch;
         } else {
+            // This case is valid for the cases where epoch has passed.
             if (passedTime >= newRemainingTime) {  newRemainingAmount = sameMaxAmountPerEpoch - amount; }
 
             if (newRemainingTime >= (passedTime % sameEpoch)) {
@@ -102,6 +101,7 @@ contract Agreement(
             newRemainingTime = sameEpoch;
         }
 
+        require(within(newRemainingAmount, 0, sameMaxAmountPerEpoch + 1));
         // Create a new contract with timelock as the current or provided locktime during contract building.
         // Note that the constructor parameters are added in the reverse order.
         // So validFrom is actually the first statement in the contract bytecode.
