@@ -96,7 +96,7 @@ contract Agreement(
         }
 
         if (newRemainingTime == 0) {
-            // In case of collision.
+            // In case of new epoch.
             newRemainingTime = sameEpoch;
         }
 
