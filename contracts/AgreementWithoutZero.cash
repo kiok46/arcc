@@ -1,31 +1,3 @@
-# ARCC
-ARCC - Allowable Revocable Contract Chain System for Bitcoin Cash
-
-ARCC allows the payer to take back the money while still allowing the payee to withdraw some funds from the contract based on restrictions of time and amount.
-
-There can be a range of applications/mechanisms possible including but not limited to, Streaming Services, Pay as you use, Recurring payments, Milestone based payouts, Project funding, Pocket money etc.
-
-<h3>Whitepaper</h3>
-
-[whitepaper.pdf](https://github.com/kiok46/arcc/blob/main/whitepaper.pdf)
-
-
-<h3>Implementation</h3>
-An Implementation of ARCC contract could be found here:
-
-[https://github.com/cashkit/arcc-poc](https://github.com/cashkit/arcc-poc)
-
-![Screenshot 2021-07-24 at 8 18 22 PM](https://user-images.githubusercontent.com/7335120/126872166-89be7458-fe45-40e8-9037-4d6d868f26d5.png)
-
-<h3>Debugging</h3>
-
-- [meep](https://github.com/gcash/meep): Bitcoin Cash Script Debugger
-
-<h3>Contracts</h3>
-
-- [Agreement.cash](https://github.com/kiok46/arcc/blob/main/contracts/Agreement.cash)
-
-```solidity
 pragma cashscript ^0.6.3;
 
 /**
@@ -96,34 +68,30 @@ contract Agreement(
         int passedTime = int(tx.locktime) - int(validFrom);
         require(passedTime >= 0);
         
-        // Default values to handle the case of epoch == 0.
-        int newRemainingAmount = sameMaxAmountPerEpoch;
         // The assignment newRemainingTime = sameEpoch enforces that the next epoch has started but this variable can be overwritten if conditions are different.
         // Useful for cases when: Epoch == 0 or timeDifference(defined later) == 0.
         int newRemainingTime = sameEpoch;
 
-        if (sameEpoch != 0){
-            newRemainingAmount = sameMaxAmountPerEpoch - amount;
-            // timeDifference == 0(defined below), marks the beginning of a new epoch.
-            // Start of a new epoch also means end of the previous one, just like a day in real life. that's why the value of remainingTime should never be 0. except epoch = 0.
+        newRemainingAmount = sameMaxAmountPerEpoch - amount;
+        // timeDifference == 0(defined below), marks the beginning of a new epoch.
+        // Start of a new epoch also means end of the previous one, just like a day in real life. that's why the value of remainingTime should never be 0. except epoch = 0.
 
-            int timeDifference = int(remainingTime) - (passedTime % sameEpoch);
-            if (timeDifference > 0) {
-                // Inside the same timeframe window. i.e same epoch.
-                // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
-                // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
-                if (passedTime < sameEpoch){
-                    // If this condition fails then no transactions were done in the new epoch and hence payee can spend upto maxAmountPerEpoch.
-                    // If this condition passes then that means the there is still time left for the new epoch to start and payee can only spend from the remaining amount.
-                    newRemainingAmount = int(remainingAmount) - amount;
-                }
-                newRemainingTime = timeDifference;
+        int timeDifference = int(remainingTime) - (passedTime % sameEpoch);
+        if (timeDifference > 0) {
+            // Inside the same timeframe window. i.e same epoch.
+            // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
+            // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
+            if (passedTime < sameEpoch){
+                // If this condition fails then no transactions were done in the new epoch and hence payee can spend upto maxAmountPerEpoch.
+                // If this condition passes then that means the there is still time left for the new epoch to start and payee can only spend from the remaining amount.
+                newRemainingAmount = int(remainingAmount) - amount;
             }
-            if (timeDifference < 0) {
-                // When a new epoch has already started but no transactions are done yet.
-                // Spendable amount should be upto maxAmountPerEpoch.
-                newRemainingTime = sameEpoch - abs(timeDifference);
-            }
+            newRemainingTime = timeDifference;
+        }
+        if (timeDifference < 0) {
+            // When a new epoch has already started but no transactions are done yet.
+            // Spendable amount should be upto maxAmountPerEpoch.
+            newRemainingTime = sameEpoch - abs(timeDifference);
         }
 
         // There is no need to check for the remaining time to be within the range as the calculation is only done by the contract.
@@ -131,7 +99,7 @@ contract Agreement(
 
         // Enforces that the newRemainingAmount should be within the range.
         // for example: when remainingAmount is less than maxAmountPerEpoch but the user tries to spend amount greater
-        // than remainingAmount and the new epoch has not started yet.
+        // than remainingAmount and the new epoch has not started yet.        
         require(within(newRemainingAmount, 0, sameMaxAmountPerEpoch + 1));
 
         // Create a new contract with timelock as the current block height or provided locktime during contract building.
@@ -147,21 +115,3 @@ contract Agreement(
         require(hash256(toRecipient + toContract) == tx.hashOutputs);
     }
 }
-```
-
-<h3>Tests</h3>
-
-- [Manual Tests](https://github.com/kiok46/arcc/blob/main/ARCC_Manual_Tests.pages)
-
-
-<h3>Feedback?</h3>
-
-- Open an issue here. ✔️
-or
-- Email me: kuldeepbb.grewal@gmail.com
-
-<h3>Donations 🍕/⛰?</h3>
-
-bitcoincash:qrsyeaegerl6ux8y6pc9357077v3dk2e9srx8s4qgd
-
-![qrcode](https://user-images.githubusercontent.com/7335120/126893698-e52988f4-0681-44e3-b403-6f1fa0f9ca52.png)
