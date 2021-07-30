@@ -77,16 +77,16 @@ contract Agreement(
         if (sameEpoch != 0){
             newRemainingAmount = sameMaxAmountPerEpoch - amount;
             // timeDifference == 0(defined below), marks the beginning of a new epoch.
-            // Start of a new epoch also means end of the previous one, just like a day in real life. that's why the value of remainingTime should never be 0. except epoch = 0.
+            // Start of a new epoch also means end of the previous one, just like a day in real life.
+            // That's why the value of remainingTime should never be 0. except when epoch is 0.
 
             int timeDifference = int(remainingTime) - (passedTime % sameEpoch);
             if (timeDifference > 0) {
-                // Inside the same timeframe window. i.e same epoch.
-                // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
-                // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
+
+                // If this condition fails then payee can spend upto maxAmountPerEpoch otherwise payee can only spend upto remaining amount.
                 if (passedTime < sameEpoch){
-                    // If this condition fails then no transactions were done in the new epoch and hence payee can spend upto maxAmountPerEpoch.
-                    // If this condition passes then that means the there is still time left for the new epoch to start and payee can only spend from the remaining amount.
+                    // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
+                    // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
                     newRemainingAmount = int(remainingAmount) - amount;
                 }
                 newRemainingTime = timeDifference;
