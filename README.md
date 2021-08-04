@@ -21,6 +21,16 @@ An Implementation of ARCC contract could be found here:
 
 - [meep](https://github.com/gcash/meep): Bitcoin Cash Script Debugger
 
+
+<h3>Existing solutions</h3>
+
+- [Mecenas](https://github.com/KarolTrzeszczkowski/Mecenas-recurring-payment-EC-plugin/blob/master/mecenas_v1.1.spedn): Mentioned in the whitepaper.
+
+- [Streaming Mecenas](https://cashscript.org/docs/guides/covenants/#simulating-state): Mentioned in the whitepaper.
+
+- [CashChannels](https://blog.bitjson.com/cashchannels-recurring-payments-for-bitcoin-cash/): Mentioned in the whitepaper.
+
+
 <h3>Contracts</h3>
 
 - [Agreement.cash](https://github.com/kiok46/arcc/blob/main/contracts/Agreement.cash)
@@ -37,12 +47,27 @@ pragma cashscript ^0.6.3;
  * @param: remaningAmount: Remaining amount that can be withdrawan from the contract by payee before next epoch starts.
  * @param: validFrom: The blockheight/time of contract/state creation.
  *
+ * - Expected improvements in near future.
+ * 1. I recently received a suggestion from bitjson regarding privacy.
+    I am thinking of adding a contract deadline in the ARCC itself. For me to explore more on this idea.
+    I think I need to spend some time on 3 cases. (There may be more cases though and suggestions are welcome.)
+
+    1. Accumulation: If I add a deadline when implementing an accumulation strategy in the contract then the number of epochs passed would matter.
+    2. Non-Accumulation: If a deadline only accounts for only those epochs where at least 1 transaction was done, then it can simply keep a track of the epochs passed just like it keeps a track of the remaining amount. (i.e a reversed counter)
+    3. Hard deadline: Expiration after a block-height, payee won’t be able to pull any funds from the contract after that.
+ *
+ * 2. A way to perform accumulation but have a signal(bool) to notify whether this contract supports it or
+    not or the contract should be able to signal that some epochs have remaining funds. That would be cool! :D
+ *
+ * These changes or any different version of the contract will be available in the contracts folder of the root directory.
  */
 contract Agreement(
         pubkey payerPk,
         pubkey payeePk,
         bytes4 epoch,
         bytes4 maxAmountPerEpoch,
+        // bool supportAccumulationFlag,
+        // bytes4 deadline,
         bytes4 remainingTime,
         bytes4 remainingAmount,
         bytes4 validFrom)
