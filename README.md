@@ -5,24 +5,24 @@ ARCC allows the payer to take back the money while still allowing the payee to w
 
 There can be a range of applications/mechanisms possible including but not limited to, Streaming Services, Pay as you use, Recurring payments, Milestone based payouts, Project funding, Pocket money etc.
 
-<h3>Whitepaper</h3>
+<h3>Whitepaper 📜</h3>
 
 [whitepaper.pdf](https://github.com/kiok46/arcc/blob/main/whitepaper.pdf)
 
 
-<h3>Implementation</h3>
+<h3>Implementation 🧱</h3>
 An Implementation of ARCC contract could be found here:
 
 [https://github.com/cashkit/arcc-poc](https://github.com/cashkit/arcc-poc)
 
 ![Screenshot 2021-07-24 at 8 18 22 PM](https://user-images.githubusercontent.com/7335120/126872166-89be7458-fe45-40e8-9037-4d6d868f26d5.png)
 
-<h3>Debugging</h3>
+<h3>Debugging 🕵️‍♂️</h3>
 
 - [meep](https://github.com/gcash/meep): Bitcoin Cash Script Debugger
 
 
-<h3>Existing solutions</h3>
+<h3>Existing solutions 👀</h3>
 
 - [Mecenas](https://github.com/KarolTrzeszczkowski/Mecenas-recurring-payment-EC-plugin/blob/master/mecenas_v1.1.spedn): Mentioned in the whitepaper.
 
@@ -36,8 +36,7 @@ An Implementation of ARCC contract could be found here:
 
 - BitJson (https://twitter.com/bitjson)
 
-
-<h3>Contracts</h3>
+<h3>Contracts 📄</h3>
 
 > Other contract versions are available in the contracts/ folder
 
@@ -180,14 +179,21 @@ contract Agreement(
 }
 ```
 
-<h3>Tests</h3>
+<h3>TODOs ✔️</h3>
+
+- A version of ARCC that supports accumulation of funds  similar to streaming mecenas.
+- Automated tests.
+- Atleast one alternative solution from blockheight.
+- Support for amount > 4 bytes i.e 8 bytes.
+
+<h3>Tests 🧪</h3>
 
 - [Manual Tests](https://github.com/kiok46/arcc/blob/main/ARCC_Manual_Tests.pages)
 
 
 <h3>Feedback?</h3>
 
-- Open an issue here. ✔️
+- Please open an issue here.
 - Message me on https://t.me/arccsystem
 
 <h3>Donations 🍕/⛰?</h3>
