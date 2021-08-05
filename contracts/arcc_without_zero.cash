@@ -1,9 +1,10 @@
 pragma cashscript ^0.6.3;
 
 /**
- * @param: payerPk: Pubkey of the payer.
- * @param: payeePk: Pubkey of the payee.
- * @param: epoch: Each epoch represents a timeframe, epoch = 1 is 1 block.
+ * @param: payerPkh: Payer's PubKeyHash.
+ * @param: payeeLockScript: P2PKH or P2SH hash.
+ * @param: expiration: Blockheight after which the the contract becomes obsolete. defaults to 6 months, i.e initial validFrom + 25920
+ * @param: epoch: Each epoch represents a timeframe, eg: epoch = 1 is 1 block.
  * @param: maxAmountPerEpoch: Max amount allowed to be spend by payee per epoch.
  * @param: remainingTime: The remaining time after which a new epoch will start.
  * @param: remaningAmount: Remaining amount that can be withdrawan from the contract by payee before next epoch starts.
@@ -11,43 +12,52 @@ pragma cashscript ^0.6.3;
  *
  */
 contract Agreement(
-        pubkey payerPk,
-        pubkey payeePk,
+        bytes20 payerPkh,
+        bytes payeeLockScript,
+        bytes4 expiration,
         bytes4 epoch,
         bytes4 maxAmountPerEpoch,
         bytes4 remainingTime,
         bytes4 remainingAmount,
-        bytes4 validFrom)
-    {
+        bytes4 validFrom
+    ){
 
     /*
     * Can only be used by the payer.
-    * @param: payerSig: signature of payerPk.
+    * @param: pk: signature of payerPk.
+    * @param: s: signature of payerPk.
     */
-    function revoke(sig payerSig){
-        require(checkSig(payerSig, payerPk));
+    function revoke(
+        pubkey pk,
+        sig s
+    ){
+        // Make sure that it's the payer who signs and revokes the funds.
+        require(hash160(pk) == payerPkh);
+        require(checkSig(s, pk));
     }
 
     /**
-     * Can only be used by payee.
-     * @param: payeeSig: signature of the payee.
+     * Can only be used by anyone by can only be paid to payee.
+     * @param: payeeSig: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
+     * @param: s: signature that matches the public key.
      * @param: amountToNextState: Amount sent should be greater than 546 i.e the dust limit
      * otherwise the next state of contract will not be spendable by payee. Need more funds.
-     * @param: amount: Amount to be sent to the payeePkh
+     * @param: amount: Amount to be sent to the payeeLockScript
      *
      * Note: It's the responsibility of the payee to calculate the miner fee when making a transaction.
      * Hence, amountToNextState = inputValue - amount - minerfee
      */
     function spend(
-        sig payeeSig,
+        pubkey pk,
+        sig s,
         int amountToNextState,
         int amount,
-    ) {
+    ){
         // Only necessary castings are used to reduce size. All other casting which either increase
         // the number of operations or keep the size same are ignored.
-        
-        // Check payee's signature.
-        require(checkSig(payeeSig, payeePk));
+
+        // Check for a valid signature.
+        require(checkSig(s, pk));
 
         // After the contract is initiated the value of maxAmountPerEpoch is never changed, hence it's checking is not included in the contract's code.
         // At the time of creating the contract, payer and payee must make sure that value of sameMaxAmountPerEpoch is >= 546 and less than 4 byte integer limit i.e ~ 21 BCH or 2,147,483,647;
@@ -57,10 +67,9 @@ contract Agreement(
         // Make sure that the amount being spent is greater than 546 and less than maxAmountPerEpoch.
         require(within(amount, 546, sameMaxAmountPerEpoch + 1));
 
-        // Expects epoch to be >= 0; Since it's a static variable. It's value is not checked here.
+        // Expects epoch to be > 0; Since it's a static variable. It's value is not checked here.
         // At the time of creating the contract, payer and payee must make sure that value of epoch is >= 0;
-        // require(sameEpoch >= 0);
-        // For cases where epoch is 0, the contract is not bound by time but only by amount. 
+        // require(sameEpoch > 0);
         int sameEpoch = int(epoch);
 
         // Each transaction rewrites the validFrom variable because it's the locktime of the transaction.
@@ -68,22 +77,28 @@ contract Agreement(
         int passedTime = int(tx.locktime) - int(validFrom);
         require(passedTime >= 0);
         
+        // Require that the locktime of the transaction is less than the expiration.
+        // After expiration the contract will only be spendable by the Payer.
+        require(int(tx.locktime) <= int(expiration));
+
+        // Default values to handle the case of epoch == 0.
+        int newRemainingAmount = sameMaxAmountPerEpoch;
         // The assignment newRemainingTime = sameEpoch enforces that the next epoch has started but this variable can be overwritten if conditions are different.
         // Useful for cases when: Epoch == 0 or timeDifference(defined later) == 0.
         int newRemainingTime = sameEpoch;
 
-        int newRemainingAmount = sameMaxAmountPerEpoch - amount;
+        newRemainingAmount = sameMaxAmountPerEpoch - amount;
         // timeDifference == 0(defined below), marks the beginning of a new epoch.
-        // Start of a new epoch also means end of the previous one, just like a day in real life.
-        // That's why the value of remainingTime should never be 0. except when epoch is 0.
+        // Start of a new epoch also means end of the previous one, just like a day in real life. that's why the value of remainingTime should never be 0. except epoch = 0.
 
         int timeDifference = int(remainingTime) - (passedTime % sameEpoch);
         if (timeDifference > 0) {
-
-            // If this condition fails then payee can spend upto maxAmountPerEpoch otherwise payee can only spend upto remaining amount.
+            // Inside the same timeframe window. i.e same epoch.
+            // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
+            // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
             if (passedTime < sameEpoch){
-                // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
-                // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
+                // If this condition fails then no transactions were done in the new epoch and hence payee can spend upto maxAmountPerEpoch.
+                // If this condition passes then that means there is still time left for the new epoch to start and payee can only spend from the remaining amount.
                 newRemainingAmount = int(remainingAmount) - amount;
             }
             newRemainingTime = timeDifference;
@@ -93,7 +108,6 @@ contract Agreement(
             // Spendable amount should be upto maxAmountPerEpoch.
             newRemainingTime = sameEpoch - abs(timeDifference);
         }
-        
 
         // There is no need to check for the remaining time to be within the range as the calculation is only done by the contract.
         // require(within(newRemainingTime, 0, sameEpoch + 1));
@@ -107,12 +121,11 @@ contract Agreement(
         // Note that the constructor parameters are added in the reverse order.
         // So validFrom is actually the first statement in the contract bytecode.
         bytes nextState = 0x04 + tx.locktime + 0x04 + bytes4(newRemainingAmount) + 0x04 + bytes4(newRemainingTime) + tx.bytecode.split(15)[1];
-    
-        // Create a simulated state(Helps in enforcing spendable restrictions) by sending the money to the new contract with same
-        // parameters except the timelock/validFrom.
-        bytes34 toRecipient = new OutputP2PKH(bytes8(amount), hash160(payeePk));
+
+        // Create a simulated state(Helps in enforcing spendable restrictions) by sending the money to the new contract state.
+        bytes toPayee = bytes8(amount) + payeeLockScript;
         bytes32 toContract = new OutputP2SH(bytes8(amountToNextState), hash160(nextState));
 
-        require(hash256(toRecipient + toContract) == tx.hashOutputs);
+        require(hash256(toPayee + toContract) == tx.hashOutputs);
     }
 }

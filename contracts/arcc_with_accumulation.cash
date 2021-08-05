@@ -1,0 +1,24 @@
+pragma cashscript ^0.6.3;
+
+/**
+ *  Work in progress.
+ */
+contract Agreement(
+        bytes20 payerPkh,
+    ){
+
+    /*
+    * Can only be used by the payer.
+    * @param: pk: signature of payerPk.
+    * @param: s: signature of payerPk.
+    */
+    function revoke(
+        pubkey pk,
+        sig s
+    ){
+        // Make sure that it's the payer who signs and revokes the funds.
+        require(hash160(pk) == payerPkh);
+        require(checkSig(s, pk));
+    }
+
+}
