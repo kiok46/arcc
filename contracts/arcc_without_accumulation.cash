@@ -3,7 +3,7 @@ pragma cashscript ^0.6.3;
 /**
  * @param: payerPkh: Payer's PubKeyHash.
  * @param: payeeLockScript: P2PKH or P2SH hash.
- * @param: expiration: Blockheight after which the the contract becomes obsolete. defaults to 6 months, i.e initial validFrom + 25920
+ * @param: expiration: Blockheight after which the the contract becomes obsolete.
  * @param: epoch: Each epoch represents a timeframe, eg: epoch = 1 is 1 block.
  * @param: maxAmountPerEpoch: Max amount allowed to be spend by payee per epoch.
  * @param: remainingTime: The remaining time after which a new epoch will start.
