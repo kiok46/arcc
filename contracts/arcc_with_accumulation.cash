@@ -3,7 +3,7 @@ pragma cashscript ^0.6.3;
 /**
  * @param: payerPkh: Payer's PubKeyHash.
  * @param: payeeLockScript: P2PKH or P2SH hash.
- * @param: expiration: Blockheight after which the the contract becomes obsolete.
+ * @param: expiration: Blockheight after which the the contract becomes obsolete. defaults to 6 months, i.e initial validFrom + 25920
  * @param: epoch: Each epoch represents a timeframe, eg: epoch = 1 is 1 block.
  * @param: maxAmountPerEpoch: Max amount allowed to be spend by payee per epoch.
  * @param: remainingTime: The remaining time after which a new epoch will start.
@@ -68,7 +68,7 @@ contract Agreement(
         // Expects epoch to be >= 0; Since it's a static variable. It's value is not checked here.
         // At the time of creating the contract, payer and payee must make sure that value of epoch is >= 0;
         // require(sameEpoch >= 0);
-        // For cases where epoch is 0, the contract is not bound by time but only by amount. 
+        // For cases where epoch is 0, the contract is not bound by time but only by amount.
         int sameEpoch = int(epoch);
 
         // Each transaction rewrites the validFrom variable because it's the locktime of the transaction.
@@ -80,37 +80,45 @@ contract Agreement(
         // After expiration the contract will only be spendable by the Payer.
         require(int(tx.locktime) <= int(expiration));
 
-        // Default values to handle the case of epoch == 0 and when new epoch has started.
+        // Default values to handle the case of epoch == 0.
         int newRemainingAmount = sameMaxAmountPerEpoch - amount;
 
         // The assignment newRemainingTime = sameEpoch enforces that the next epoch has started but this variable can be overwritten if conditions are different.
         // Useful for cases when: Epoch == 0 or timeDifference(defined later) == 0.
         int newRemainingTime = sameEpoch;
+    
+        // Note:
+        // 1. remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
+        // 2. Start of a new epoch also means end of the previous one, just like a day in real life.
+        // that's why the value of remainingTime should never be 0. except when epoch = 0.
 
         if (sameEpoch != 0){
-
-            // timeDifference == 0(defined below), marks the beginning of a new epoch.
-            // Start of a new epoch also means end of the previous one, just like a day in real life.
-            // that's why the value of remainingTime should never be 0. except epoch = 0.
+            // timeDifference == 0, marks the beginning of a new epoch.
             int timeDifference = int(remainingTime) - (passedTime % sameEpoch);
+
+            // Next two lines are for timeDifference <= 0 but also covers some edge cases. 
+            // The payee must accumulate the partial amount left only from the previous epoch.
+            newRemainingAmount = sameMaxAmountPerEpoch + int(remainingAmount) - amount;
+            // This condition will be true when passed time is greater than remaining time and completely 
+            // ignores the fact that there might be some missed epochs.
+            // When there is a missed epoch, remainingAmount will be overwritten.
+            newRemainingTime = sameEpoch - abs(timeDifference);
+
+            // This condition will be true in two cases:
+            // 1. When previous transaction was done in the same epoch.
+            // 2. When there is a missed epoch, remainingAmount will be overwritten.
             if (timeDifference > 0) {
-                // Inside the same timeframe window. i.e same epoch.
-                // remainingAmount is expected to be in the range of (0 to maxAmountPerEpoch) at time of contract creation.
-                // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
                 if (passedTime < sameEpoch){
-                    // If this condition fails then no transactions were done in the new epoch and hence payee can spend upto maxAmountPerEpoch.
                     // If this condition passes then that means there is still time left for the new
                     // epoch to start and payee can only spend from the remaining amount.
+                    // The calculated value may be negative here but that would mean that the contract execution will fail because of the checks below.
                     newRemainingAmount = int(remainingAmount) - amount;
                 }
                 newRemainingTime = timeDifference;
             }
-            if (timeDifference < 0) {
-                // When a new epoch has already started but no transactions are done yet.
-                newRemainingTime = sameEpoch - abs(timeDifference);
-            }
-            if (passedTime >= sameEpoch){
-                // Accumulation
+
+            if (passedTime >= (sameEpoch + int(remainingTime))){
+                // Accumulation of absolute epoch(s) being missed.
                 // Spendable amount should be upto a multiple of maxAmountPerEpoch but less than 4 bytes integer limit i.e 21 BCH or 2,147,483,647;
                 // Note: It's the responsibility of the payee to calculate the withdrawal amount, Contract will only verify the correctness.
 
@@ -120,7 +128,7 @@ contract Agreement(
                 newRemainingAmount = sameMaxAmountPerEpoch;
 
                 // Missed amount from all previously missed epochs, 10000 - 1000 = 9000.
-                int amountInMissedEpochs = amount - int(remainingAmount);
+                int missedAmount = amount - int(remainingAmount);
  
                 // Total missed epochs
                 // Since missedEpochs is calculated by the contract itself, payer can be assured that payee cannot spend more than allowed.
@@ -128,8 +136,8 @@ contract Agreement(
                 int missedEpochs = (passedTime - (passedTime % sameEpoch))/sameEpoch;
 
                 // Same logic as streaming mecenas, checking the correctness.
-                require(amountInMissedEpochs / missedEpochs == sameMaxAmountPerEpoch);
-                require(amountInMissedEpochs % missedEpochs == 0);
+                require(missedAmount / missedEpochs == sameMaxAmountPerEpoch);
+                require(missedAmount % missedEpochs == 0);
             }
         }
 
