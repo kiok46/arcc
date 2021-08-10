@@ -40,17 +40,11 @@ contract Agreement(
      * Can only be used by anyone but can only be paid to payee.
      * @param: payeeSig: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
      * @param: s: signature that matches the public key.
-     * @param: amountToNextState: Amount sent should be greater than 546 i.e the dust limit
-     * otherwise the next state of contract will not be spendable by payee. Need more funds.
      * @param: amount: Amount to be sent to the payeeLockScript
-     *
-     * Note: It's the responsibility of the payee to calculate the miner fee when making a transaction.
-     * Hence, amountToNextState = inputValue - amount - minerfee
      */
     function spend(
         pubkey pk,
         sig s,
-        int amountToNextState,
         int amount,
     ){
         // Only necessary castings are used to reduce size. All other casting which either increase
@@ -153,9 +147,13 @@ contract Agreement(
         // So validFrom is actually the first statement in the contract bytecode.
         bytes nextState = 0x04 + tx.locktime + 0x04 + bytes4(newRemainingAmount) + 0x04 + bytes4(newRemainingTime) + tx.bytecode.split(15)[1];
 
+        // It's better to mention the miner fee here to prevent unnecessary/unexpected loss of funds.
+        int minerFee = 1120;
+        bytes8 amountToNextState = bytes8(int(bytes(tx.value)) - amount - minerFee);
+
         // Create a simulated state(Helps in enforcing spendable restrictions) by sending the money to the new contract state.
         bytes toPayee = bytes8(amount) + payeeLockScript;
-        bytes32 toContract = new OutputP2SH(bytes8(amountToNextState), hash160(nextState));
+        bytes32 toContract = new OutputP2SH(amountToNextState, hash160(nextState));
 
         require(hash256(toPayee + toContract) == tx.hashOutputs);
     }
