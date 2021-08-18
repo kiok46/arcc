@@ -36,7 +36,7 @@ contract Agreement(
 
     /**
      * Can only be used by anyone by can only be paid to payee.
-     * @param: payeeSig: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
+     * @param: pk: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
      * @param: s: signature that matches the public key.
      * @param: amountToNextState: Amount sent should be greater than 546 i.e the dust limit
      * otherwise the next state of contract will not be spendable by payee. Need more funds.

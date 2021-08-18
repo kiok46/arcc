@@ -38,7 +38,7 @@ contract Agreement(
 
     /**
      * Can only be used by anyone by can only be paid to payee.
-     * @param: payeeSig: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
+     * @param: pk: Public Key or either Payer, Payee or third party making the transaction as the funds can only be received by the Payee because of covenants.
      * @param: s: signature that matches the public key.
      * @param: amount: Amount to be sent to the payeeLockScript
      */
